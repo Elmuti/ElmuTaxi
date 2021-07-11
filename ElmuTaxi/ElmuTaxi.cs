@@ -221,7 +221,7 @@ public class ElmuTaxi : PhysicsGame
             if (GameRunning)
                 car.Position -= new Vector(0, (CurrentCarSpeed - CAR_NPC_SPEED) * dt);
         }
-
+        Cars = carsRemaining.ToList();
         //remove fuels out of view
         var fuelsRemaining = FuelCans.Where(c => {
             if ((c.Position.Y < Level.Center.Y - 1200.0) || c.Tag != "Fuel")
@@ -240,7 +240,7 @@ public class ElmuTaxi : PhysicsGame
             if (GameRunning && fuel != null)
                 fuel.Position -= new Vector(0, CurrentCarSpeed * dt);
         }
-
+        FuelCans = fuelsRemaining.ToList();
         //update roads
         foreach (GameObject road in Roads)
         {
