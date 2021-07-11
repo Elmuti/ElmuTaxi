@@ -36,12 +36,12 @@ public class ElmuTaxi : PhysicsGame
     public Dictionary<PhysicsObject, bool> FuelCans = new Dictionary<PhysicsObject, bool>();
 
     //Constants
-    const double CAR_SPAWNRATE_MIN = 1.1;
+    const double CAR_SPAWNRATE_MIN = 1.5;
     const double CAR_SPAWNRATE_LIMIT = 0.1;
-    const double CAR_SPAWNRATE_MAX = 2.2;
+    const double CAR_SPAWNRATE_MAX = 2.4;
     const double FUEL_SPAWNRATE_MIN = 7.5;
     const double FUEL_SPAWNRATE_MAX = 16;
-    const double CAR_ADJACENT_LANE_COOLDOWN = 2.3;
+    const double CAR_ADJACENT_LANE_COOLDOWN = 2;
     const double PLR_MAX_ACCELERATION = 15;
     const double PLR_ACCELERATION = 150;
     const double PLR_DECCELERATION = 75;
@@ -134,22 +134,6 @@ public class ElmuTaxi : PhysicsGame
     /// <param name="lane"></param>
     /// <param name="time"></param>
     /// <returns></returns>
-    //bool LaneCanSpawn(int lane, double time)
-    //{
-    //    switch (lane)
-    //    {
-    //        case 0:
-    //            return LaneHasntSpawnedIn(1, time);
-    //        case 1:
-    //            return (LaneHasntSpawnedIn(0, time) || LaneHasntSpawnedIn(2, time));
-    //        case 2:
-    //            return (LaneHasntSpawnedIn(1, time) || LaneHasntSpawnedIn(3, time));
-    //        case 3:
-    //            return LaneHasntSpawnedIn(2, time);
-    //        default:
-    //            return false;
-    //    }
-    //}
     bool LaneCanSpawn(int lane, double time)
     {
         switch (lane)
@@ -216,25 +200,33 @@ public class ElmuTaxi : PhysicsGame
         //Handle car spawning on lanes
         if (GameRunning)
         {
-            for (int lane = 0; lane < LaneXCooldown.Count; lane++)
+
+            List<int> ind = new List<int>() { 0, 1, 2, 3 };
+            Random rnd = new Random();
+
+            for(int i = 0; i < 4; i++)
             {
-                double cd = LaneXCooldown[lane];
+                var next = rnd.Next(0, ind.Count);
+                var element = ind[next];
+                ind.RemoveAt(next);
+
+                double cd = LaneXCooldown[element];
                 //if (cd < 0 && TotalCooldown < 0 && LaneCanSpawn(lane, total)) //TODO: investigate if total CD is still necessary after introduction of LaneCanSpawn ?
-                if (cd <= 0 && LaneCanSpawn(lane, total)) 
+                if (cd <= 0 && LaneCanSpawn(element, total)) 
                     {
                     if (total > NextFuelDrop)
                     {
                         NextFuelDrop = total + Utils.Math.RandomDouble(FUEL_SPAWNRATE_MIN, FUEL_SPAWNRATE_MAX);
-                        SpawnFuel(lane);
-                        LaneXPrevSpawn[lane] = total;
+                        SpawnFuel(element);
+                        LaneXPrevSpawn[element] = total;
                     }
                     else
                     {
-                        SpawnCar(lane);
-                        LaneXPrevSpawn[lane] = total;
+                        SpawnCar(element);
+                        LaneXPrevSpawn[element] = total;
                     }
                 }
-                LaneXCooldown[lane] -= dt;
+                LaneXCooldown[element] -= dt;
             }
         }
 
@@ -333,9 +325,9 @@ public class ElmuTaxi : PhysicsGame
     {
         PhoneBackButton.Listen(ConfirmExit, "End game");
         Keyboard.Listen(Key.Escape, ButtonState.Pressed, ConfirmExit, "End game");
-        Keyboard.Listen(Key.R, ButtonState.Pressed, ResetGame, "Restart level");
-        Keyboard.Listen(Key.A, ButtonState.Down, MovePlayer, null, new Vector(-25, 0));
-        Keyboard.Listen(Key.D, ButtonState.Down, MovePlayer, null, new Vector(25, 0));
+        Keyboard.Listen(Key.Enter, ButtonState.Pressed, ResetGame, "Restart level");
+        Keyboard.Listen(Key.Left, ButtonState.Down, MovePlayer, null, new Vector(-25, 0));
+        Keyboard.Listen(Key.Right, ButtonState.Down, MovePlayer, null, new Vector(25, 0));
     }
     
     /// <summary>
@@ -371,8 +363,7 @@ public class ElmuTaxi : PhysicsGame
         CurrentCarMaxSpeed = CAR_MAXSPEED_DEFAULT;
         GameOverDisplay = new Label();
         GameOverDisplay.HorizontalAlignment = HorizontalAlignment.Center;
-        GameOverDisplay.Text = String.Format("{0}\nDistance Travelled:{1}\nPress 'R' to restart", reason, Math.Round(DistanceTravelled / 5.5, 2).ToString());
-        //display.Font = LoadFont("diablo_h");
+        GameOverDisplay.Text = String.Format("{0}\nDistance Travelled:{1}\nPress 'Enter' to restart", reason, Math.Round(DistanceTravelled / 5.5, 2).ToString());
         GameOverDisplay.Position = new Vector(25.0, 50.0);
         GameOverDisplay.TextScale = new Vector(2, 2);
         GameOverDisplay.TextColor = Color.Red;
