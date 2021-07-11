@@ -62,7 +62,7 @@ public class ElmuTaxi : PhysicsGame
 
     double TotalCooldown = 1;
     List<double> LaneXPositions = new List<double>() {-340, -140, 60, 280};
-    List<double> LaneXCooldown = new List<double>() { 5, 0, 5, 5 };
+    List<double> LaneXCooldown = new List<double>() { 8, 2, 8, 8 };
     List<double> LaneXPrevSpawn = new List<double>() { 0, 0, 0, 0 };
     List<Image> CarTextures = new List<Image>()
     {
@@ -164,7 +164,6 @@ public class ElmuTaxi : PhysicsGame
         double total = time.SinceStartOfGame.TotalSeconds;
         double dt = time.SinceLastUpdate.TotalSeconds;
         TotalCooldown--;
-        PrintLaneCD();
 
         Speedometer.Value = (int)(CurrentCarSpeed / 5.5);
         DistanceCounter.Value = (int)(DistanceTravelled / 5.5);
@@ -175,7 +174,8 @@ public class ElmuTaxi : PhysicsGame
         //game over if we run out of speed
         if (GameRunning && CurrentCarSpeed <= 0)
         {
-            GameOver();
+            Debug.WriteLine("Car stopped, game over!");
+            GameOver("Game over. You ran out of fuel!");
             GameRunning = false;
         }
 
@@ -209,6 +209,7 @@ public class ElmuTaxi : PhysicsGame
                     {
                         NextFuelDrop = total + Utils.Math.RandomDouble(FUEL_SPAWNRATE_MIN, FUEL_SPAWNRATE_MAX);
                         SpawnFuel(lane);
+                        LaneXPrevSpawn[lane] = total;
                     }
                     else
                     {
@@ -241,7 +242,7 @@ public class ElmuTaxi : PhysicsGame
         Cars = carsRemaining.ToList();
         //remove fuels out of view
         var fuelsRemaining = FuelCans.Where(c => {
-            if ((c.Position.Y < Level.Center.Y - 1200.0) || c.Tag != "Fuel")
+            if ((c.Position.Y < Level.Center.Y - 1200.0) || !c.IsUpdated)
             {
                 c.Destroy();
                 return false;
@@ -254,7 +255,7 @@ public class ElmuTaxi : PhysicsGame
         //update remaining fuels
         foreach (PhysicsObject fuel in fuelsRemaining)
         {
-            if (GameRunning && fuel != null)
+            if (GameRunning && fuel != null && fuel.IsUpdated)
                 fuel.Position -= new Vector(0, CurrentCarSpeed * dt);
         }
         FuelCans = fuelsRemaining.ToList();
@@ -305,7 +306,7 @@ public class ElmuTaxi : PhysicsGame
         Keyboard.Listen(Key.A, ButtonState.Down, MovePlayer, null, new Vector(-25, 0));
         Keyboard.Listen(Key.D, ButtonState.Down, MovePlayer, null, new Vector(25, 0));
     }
-
+    
     /// <summary>
     /// Handler for Car vs. Car collisions
     /// </summary>
@@ -313,32 +314,33 @@ public class ElmuTaxi : PhysicsGame
     /// <param name="b"></param>
     public void PlayerDied(PhysicsObject a, PhysicsObject b) //TODO:  Rename me?
     {
-        if (Cars.Contains(a) && Cars.Contains(b))
-            return;
-
-        if ((a == Player && b.Tag == "Fuel") || (b == Player && a.Tag == "Fuel"))
+        if (a == Player || b == Player)
         {
-            Debug.WriteLine("PICK UP FUEL!!!!!!!");
-            FuelGauge.Value = 100;
+            if (a == Player && FuelCans.Contains(b) || (b == Player && FuelCans.Contains(a)))
+            {
+                Debug.WriteLine("PICK UP FUEL!!!!!!!");
+                FuelGauge.Value = 100;
 
-            if (a.Tag == "Fuel")
-                a.Tag = "";
+                if (a == Player)
+                    b.IsUpdated = false;
 
-            if (b.Tag == "Fuel")
-                b.Tag = "";
+                if (b == Player)
+                    a.IsUpdated = false;
 
-            return;
+                return;
+            }
+            GameOver("Game over. You hit a car!");
+            Debug.WriteLine("Car hit an npc car, GAME OVER!");
         }
-        GameOver();
     }
 
-    public void GameOver()
+    public void GameOver(string reason = "You Lost!")
     {
         GameRunning = false;
         CurrentCarMaxSpeed = CAR_MAXSPEED_DEFAULT;
         GameOverDisplay = new Label();
         GameOverDisplay.HorizontalAlignment = HorizontalAlignment.Center;
-        GameOverDisplay.Text = String.Format("You Lost!\nDistance Travelled:{0}\nPress 'R' to restart", Math.Round(DistanceTravelled / 5.5, 2).ToString());
+        GameOverDisplay.Text = String.Format("{0}\nDistance Travelled:{1}\nPress 'R' to restart", reason, Math.Round(DistanceTravelled / 5.5, 2).ToString());
         //display.Font = LoadFont("diablo_h");
         GameOverDisplay.Position = new Vector(25.0, 50.0);
         GameOverDisplay.TextScale = new Vector(2, 2);
@@ -354,6 +356,7 @@ public class ElmuTaxi : PhysicsGame
     /// </summary>
     private void ResetGame()
     {
+        Debug.WriteLine("Resetting game");
         DistanceTravelled = 0;
         CurrentCarSpeed = 1;
         DistanceCounter.Value = 0;
@@ -382,8 +385,8 @@ public class ElmuTaxi : PhysicsGame
         LaneXPrevSpawn = new List<double>() { 0, 0, 0, 0 };
 
         AddRoad(Vector.Zero);
-        AddRoad(new Vector(0, 2000));
-        AddRoad(new Vector(0, -2000));
+        AddRoad(new Vector(0, 1950));
+        AddRoad(new Vector(0, -1950));
     }
 
     /// <summary>
