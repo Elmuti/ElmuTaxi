@@ -360,6 +360,7 @@ public class ElmuTaxi : PhysicsGame
         {
             Debug.WriteLine("PICK UP FUEL!!!!!!!");
             FuelGauge.Value = 100;
+            NoFuel = false;
             FuelCans[b] = false;
         }
     }
