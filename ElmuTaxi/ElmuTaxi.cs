@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
+
 public class ElmuTaxi : PhysicsGame
 {
     /// <summary>
@@ -32,7 +33,7 @@ public class ElmuTaxi : PhysicsGame
     /// <summary>
     /// List of all fuel pickups
     /// </summary>
-    public List<PhysicsObject> FuelCans = new List<PhysicsObject>();
+    public Dictionary<PhysicsObject, bool> FuelCans = new Dictionary<PhysicsObject, bool>();
 
     //Constants
     const double CAR_SPAWNRATE_MIN = 1.1;
@@ -41,7 +42,7 @@ public class ElmuTaxi : PhysicsGame
     const double FUEL_SPAWNRATE_MIN = 7.5;
     const double FUEL_SPAWNRATE_MAX = 16;
     const double CAR_ADJACENT_LANE_COOLDOWN = 2.3;
-    const double PLR_MAX_ACCELERATION = 5;
+    const double PLR_MAX_ACCELERATION = 15;
     const double PLR_ACCELERATION = 150;
     const double PLR_DECCELERATION = 75;
     const double CAR_NPC_SPEED = 350;
@@ -111,7 +112,7 @@ public class ElmuTaxi : PhysicsGame
         fuelPickup.Tag = "Fuel";
         //choose lane
         fuelPickup.Position = Level.Center + new Vector(LaneXPositions[lane], 1300);
-        FuelCans.Add(fuelPickup);
+        FuelCans.Add(fuelPickup, true);
         Add(fuelPickup, 2);
         Debug.WriteLine("Spawned a fuel can!");
     }
@@ -241,24 +242,42 @@ public class ElmuTaxi : PhysicsGame
         }
         Cars = carsRemaining.ToList();
         //remove fuels out of view
-        var fuelsRemaining = FuelCans.Where(c => {
-            if ((c.Position.Y < Level.Center.Y - 1200.0) || !c.IsUpdated)
-            {
-                c.Destroy();
-                return false;
-            }
-            else
-            {
-                return true;
-            }
-        });
-        //update remaining fuels
-        foreach (PhysicsObject fuel in fuelsRemaining)
+        Debug.WriteLine("Fuel cans before .Where = " + FuelCans.Count.ToString());
+
+
+        List<PhysicsObject> removeList = new List<PhysicsObject>();
+
+        foreach (KeyValuePair<PhysicsObject, bool> fuel in FuelCans)
         {
-            if (GameRunning && fuel != null && fuel.IsUpdated)
-                fuel.Position -= new Vector(0.0, CurrentCarSpeed * dt);
+            if ( (fuel.Key.Position.Y < Level.Center.Y - 1200.0) || !fuel.Value)
+            {
+                removeList.Add(fuel.Key);
+            }
         }
-        FuelCans = fuelsRemaining.ToList();
+        foreach (PhysicsObject fuel in removeList)
+        {
+            FuelCans.Remove(fuel);
+            fuel.Destroy();
+        }
+
+        //update remaining fuels
+        //Debug.WriteLine("Fuel in .Where = " + fuelsRemaining.ToList().Count.ToString());
+        foreach (KeyValuePair<PhysicsObject, bool> fuel in FuelCans)
+        {
+            if (GameRunning && fuel.Key != null && fuel.Value)
+            {
+                try
+                {
+                    fuel.Key.Position -= new Vector(0.0, CurrentCarSpeed * dt);
+                }
+                catch(NullReferenceException e)
+                {
+
+                }
+            }
+        }
+
+        Debug.WriteLine("Fuel after .Where = " + FuelCans.Count.ToString());
         //update roads
         foreach (GameObject road in Roads)
         {
@@ -314,8 +333,11 @@ public class ElmuTaxi : PhysicsGame
     /// <param name="b"></param>
     public void PlayerCollision(PhysicsObject a, PhysicsObject b) //TODO:  Rename me?
     {
-        bool isFuel = FuelCans.Contains(b);
+        bool isFuel = FuelCans.ContainsKey(b);
         bool isCar = Cars.Contains(b);
+
+        if (!a.IsUpdated || !b.IsUpdated)
+            return;
 
         if (isCar)
         {
@@ -326,7 +348,7 @@ public class ElmuTaxi : PhysicsGame
         {
             Debug.WriteLine("PICK UP FUEL!!!!!!!");
             FuelGauge.Value = 100;
-            b.IsUpdated = false;
+            FuelCans[b] = false;
         }
     }
 
@@ -363,21 +385,21 @@ public class ElmuTaxi : PhysicsGame
         foreach (PhysicsObject car in Cars)
             car.Destroy();
 
-        foreach (PhysicsObject fuel in FuelCans)
-            fuel.Destroy();
+        foreach (KeyValuePair<PhysicsObject,bool> fuel in FuelCans)
+            fuel.Key.Destroy();
 
         foreach (GameObject r in Roads)
             r.Destroy();
 
         Cars = new List<PhysicsObject>();
-        FuelCans = new List<PhysicsObject>();
+        FuelCans = new Dictionary<PhysicsObject, bool>();
         Roads = new List<GameObject>();
 
         if (GameOverDisplay != null)
             GameOverDisplay.Destroy();
 
 
-        LaneXCooldown = new List<double>() { 5, 0, 5, 5 };
+        LaneXCooldown = new List<double>() { 8, 2, 8, 8 };
         LaneXPrevSpawn = new List<double>() { 0, 0, 0, 0 };
 
         AddRoad(Vector.Zero);
