@@ -1,8 +1,7 @@
 Hello and thank you for downloading ElmuTaxi.
 
 Keyboard controls:
-A   - move left
-D   - move right
+Arrow keys - move
 R   - restart game
 Esc - exit game
 
@@ -12,3 +11,6 @@ https://opengameart.org/content/free-top-down-car-sprites-by-unlucky-studio
 
 
 ElmuTaxi - https://github.com/Elmuti/ElmuTaxi
+
+
+DEV HIGH SCORE 42870
