@@ -37,7 +37,7 @@ public class ElmuTaxi : PhysicsGame
 
     //Constants
     const double CAR_SPAWNRATE_MIN = 1.1;
-    const double CAR_SPAWNRATE_LIMIT = 1;
+    const double CAR_SPAWNRATE_LIMIT = 0.1;
     const double CAR_SPAWNRATE_MAX = 2.2;
     const double FUEL_SPAWNRATE_MIN = 7.5;
     const double FUEL_SPAWNRATE_MAX = 16;
@@ -84,6 +84,7 @@ public class ElmuTaxi : PhysicsGame
     /// <param name="lane">lane to spawn or 0 by default</param>
     private void SpawnCar(int lane = 0)
     {
+        Debug.WriteLine("Spawning car on lane " + lane.ToString());
         //set lane on CD
         LaneXCooldown[lane] = Utils.Math.RandomDouble(CAR_SPAWNRATE_MIN, CAR_SPAWNRATE_MAX);
         TotalCooldown = CAR_SPAWNRATE_LIMIT;
@@ -92,10 +93,9 @@ public class ElmuTaxi : PhysicsGame
         Image carTex = CarTextures[rnd.Next(0, CarTextures.Count - 1)];
         PhysicsObject newCar = new PhysicsObject(carTex);
         //choose lane
-        newCar.Position = Level.Center + new Vector(LaneXPositions[lane], 1300);
+        newCar.Position = new Vector(LaneXPositions[lane], 1300);
         Cars.Add(newCar);
         Add(newCar, 2);
-        Debug.WriteLine("Spawned a car!");
     }
 
     /// <summary>
@@ -125,7 +125,7 @@ public class ElmuTaxi : PhysicsGame
     /// <returns></returns>
     bool LaneHasntSpawnedIn(int lane, double time)
     {
-        return (time - LaneXPrevSpawn[lane]) > CAR_ADJACENT_LANE_COOLDOWN;
+        return (time - LaneXPrevSpawn[lane]) >= CAR_ADJACENT_LANE_COOLDOWN;
     }
 
     /// <summary>
@@ -139,13 +139,13 @@ public class ElmuTaxi : PhysicsGame
         switch (lane)
         {
             case 0:
-                return (LaneHasntSpawnedIn(1, time) || LaneHasntSpawnedIn(2, time) || LaneHasntSpawnedIn(3, time));
+                return LaneHasntSpawnedIn(1, time);
             case 1:
-                return (LaneHasntSpawnedIn(0, time) || LaneHasntSpawnedIn(2, time) || LaneHasntSpawnedIn(3, time));
+                return (LaneHasntSpawnedIn(0, time) || LaneHasntSpawnedIn(2, time));
             case 2:
-                return (LaneHasntSpawnedIn(1, time) || LaneHasntSpawnedIn(0, time) || LaneHasntSpawnedIn(3, time));
+                return (LaneHasntSpawnedIn(1, time) || LaneHasntSpawnedIn(3, time));
             case 3:
-                return (LaneHasntSpawnedIn(1, time) || LaneHasntSpawnedIn(2, time) || LaneHasntSpawnedIn(0, time));
+                return LaneHasntSpawnedIn(2, time);
             default:
                 return false;
         }
@@ -204,8 +204,9 @@ public class ElmuTaxi : PhysicsGame
             for (int lane = 0; lane < LaneXCooldown.Count; lane++)
             {
                 double cd = LaneXCooldown[lane];
-                if (cd < 0 && TotalCooldown < 0 && LaneCanSpawn(lane, total)) //TODO: investigate if total CD is still necessary after introduction of LaneCanSpawn ?
-                {
+                //if (cd < 0 && TotalCooldown < 0 && LaneCanSpawn(lane, total)) //TODO: investigate if total CD is still necessary after introduction of LaneCanSpawn ?
+                if (cd <= 0 && LaneCanSpawn(lane, total)) 
+                    {
                     if (total > NextFuelDrop)
                     {
                         NextFuelDrop = total + Utils.Math.RandomDouble(FUEL_SPAWNRATE_MIN, FUEL_SPAWNRATE_MAX);
@@ -241,10 +242,8 @@ public class ElmuTaxi : PhysicsGame
                 car.Position -= new Vector(0, (CurrentCarSpeed - CAR_NPC_SPEED) * dt);
         }
         Cars = carsRemaining.ToList();
+
         //remove fuels out of view
-        Debug.WriteLine("Fuel cans before .Where = " + FuelCans.Count.ToString());
-
-
         List<PhysicsObject> removeList = new List<PhysicsObject>();
 
         foreach (KeyValuePair<PhysicsObject, bool> fuel in FuelCans)
@@ -261,7 +260,6 @@ public class ElmuTaxi : PhysicsGame
         }
 
         //update remaining fuels
-        //Debug.WriteLine("Fuel in .Where = " + fuelsRemaining.ToList().Count.ToString());
         foreach (KeyValuePair<PhysicsObject, bool> fuel in FuelCans)
         {
             if (GameRunning && fuel.Key != null && fuel.Value)
@@ -277,7 +275,6 @@ public class ElmuTaxi : PhysicsGame
             }
         }
 
-        Debug.WriteLine("Fuel after .Where = " + FuelCans.Count.ToString());
         //update roads
         foreach (GameObject road in Roads)
         {
@@ -319,9 +316,9 @@ public class ElmuTaxi : PhysicsGame
     /// </summary>
     private void ConnectListeners()
     {
-        PhoneBackButton.Listen(ConfirmExit, "Lopeta peli");
-        Keyboard.Listen(Key.Escape, ButtonState.Pressed, ConfirmExit, "Lopeta peli");
-        Keyboard.Listen(Key.R, ButtonState.Pressed, ResetGame, "Aloita uudestaan");
+        PhoneBackButton.Listen(ConfirmExit, "End game");
+        Keyboard.Listen(Key.Escape, ButtonState.Pressed, ConfirmExit, "End game");
+        Keyboard.Listen(Key.R, ButtonState.Pressed, ResetGame, "Restart level");
         Keyboard.Listen(Key.A, ButtonState.Down, MovePlayer, null, new Vector(-25, 0));
         Keyboard.Listen(Key.D, ButtonState.Down, MovePlayer, null, new Vector(25, 0));
     }
