@@ -34,8 +34,7 @@ public class ElmuTaxi : PhysicsGame
     /// </summary>
     public List<PhysicsObject> FuelCans = new List<PhysicsObject>();
 
-    const double CAR_BASE_SPEED = 500;
-    const double CAR_MAX_SPEED = 150;
+    //Constants
     const double CAR_SPAWNRATE_MIN = 1.1;
     const double CAR_SPAWNRATE_LIMIT = 1;
     const double CAR_SPAWNRATE_MAX = 2.2;
@@ -47,6 +46,7 @@ public class ElmuTaxi : PhysicsGame
     const double PLR_DECCELERATION = 75;
     const double CAR_NPC_SPEED = 350;
     const double CAR_MAXSPEED_DEFAULT = 950.0;
+
     Image RoadTexture = LoadImage("road");
     Image FuelCanTex = LoadImage("jerrycan");
     DoubleMeter FuelGauge;
@@ -256,7 +256,7 @@ public class ElmuTaxi : PhysicsGame
         foreach (PhysicsObject fuel in fuelsRemaining)
         {
             if (GameRunning && fuel != null && fuel.IsUpdated)
-                fuel.Position -= new Vector(0, CurrentCarSpeed * dt);
+                fuel.Position -= new Vector(0.0, CurrentCarSpeed * dt);
         }
         FuelCans = fuelsRemaining.ToList();
         //update roads
