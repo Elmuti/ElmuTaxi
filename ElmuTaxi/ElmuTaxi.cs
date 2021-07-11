@@ -40,20 +40,26 @@ public class ElmuTaxi : PhysicsGame
     const double CAR_SPAWNRATE_LIMIT = 1;
     const double CAR_SPAWNRATE_MAX = 2.2;
     const double FUEL_SPAWNRATE_MIN = 7.5;
-    const double FUEL_SPAWNRATE_MAX = 20;
+    const double FUEL_SPAWNRATE_MAX = 16;
     const double CAR_ADJACENT_LANE_COOLDOWN = 2.3;
-    const double PLR_ACCELERATION = 250;
+    const double PLR_MAX_ACCELERATION = 5;
+    const double PLR_ACCELERATION = 150;
     const double PLR_DECCELERATION = 75;
     const double CAR_NPC_SPEED = 350;
+    const double CAR_MAXSPEED_DEFAULT = 950.0;
     Image RoadTexture = LoadImage("road");
     Image FuelCanTex = LoadImage("jerrycan");
     DoubleMeter FuelGauge;
+    IntMeter DistanceCounter;
+    IntMeter Speedometer;
     Label GameOverDisplay;
     bool NoFuel = false;
+    double DistanceTravelled = 0.0;
     double NextFuelDrop = 5.0;
     double FuelUsePerSecond = 0.25;
     double CurrentCarSpeed = 1;
     double CurrentCarMaxSpeed = 950.0;
+
     double TotalCooldown = 1;
     List<double> LaneXPositions = new List<double>() {-340, -140, 60, 280};
     List<double> LaneXCooldown = new List<double>() { 5, 0, 5, 5 };
@@ -160,6 +166,12 @@ public class ElmuTaxi : PhysicsGame
         TotalCooldown--;
         PrintLaneCD();
 
+        Speedometer.Value = (int)(CurrentCarSpeed / 5.5);
+        DistanceCounter.Value = (int)(DistanceTravelled / 5.5);
+
+        if (GameRunning && CurrentCarSpeed > 0)
+            DistanceTravelled += CurrentCarSpeed * dt;
+
         //game over if we run out of speed
         if (GameRunning && CurrentCarSpeed <= 0)
         {
@@ -168,7 +180,12 @@ public class ElmuTaxi : PhysicsGame
         }
 
         //Update fuel
-        FuelGauge.Value -= FuelUsePerSecond * dt;
+        if (GameRunning)
+        {
+            FuelGauge.Value -= FuelUsePerSecond * dt;
+            CurrentCarMaxSpeed += PLR_MAX_ACCELERATION * dt;
+        }
+
         if (!NoFuel)
         {
             //we have fuel
@@ -190,7 +207,7 @@ public class ElmuTaxi : PhysicsGame
                 {
                     if (total > NextFuelDrop)
                     {
-                        NextFuelDrop = Utils.Math.RandomDouble(FUEL_SPAWNRATE_MIN, FUEL_SPAWNRATE_MAX);
+                        NextFuelDrop = total + Utils.Math.RandomDouble(FUEL_SPAWNRATE_MIN, FUEL_SPAWNRATE_MAX);
                         SpawnFuel(lane);
                     }
                     else
@@ -318,8 +335,10 @@ public class ElmuTaxi : PhysicsGame
     public void GameOver()
     {
         GameRunning = false;
+        CurrentCarMaxSpeed = CAR_MAXSPEED_DEFAULT;
         GameOverDisplay = new Label();
-        GameOverDisplay.Text = "GAME OVER.";
+        GameOverDisplay.HorizontalAlignment = HorizontalAlignment.Center;
+        GameOverDisplay.Text = String.Format("You Lost!\nDistance Travelled:{0}\nPress 'R' to restart", Math.Round(DistanceTravelled / 5.5, 2).ToString());
         //display.Font = LoadFont("diablo_h");
         GameOverDisplay.Position = new Vector(25.0, 50.0);
         GameOverDisplay.TextScale = new Vector(2, 2);
@@ -335,7 +354,9 @@ public class ElmuTaxi : PhysicsGame
     /// </summary>
     private void ResetGame()
     {
+        DistanceTravelled = 0;
         CurrentCarSpeed = 1;
+        DistanceCounter.Value = 0;
         FuelGauge.Value = 100;
         NoFuel = false;
         GameRunning = true;
@@ -343,10 +364,14 @@ public class ElmuTaxi : PhysicsGame
         foreach (PhysicsObject car in Cars)
             car.Destroy();
 
+        foreach (PhysicsObject fuel in FuelCans)
+            fuel.Destroy();
+
         foreach (GameObject r in Roads)
             r.Destroy();
 
         Cars = new List<PhysicsObject>();
+        FuelCans = new List<PhysicsObject>();
         Roads = new List<GameObject>();
 
         if (GameOverDisplay != null)
@@ -392,34 +417,69 @@ public class ElmuTaxi : PhysicsGame
         Camera.ZoomToLevel();
         Player.Shape = Shape.Rectangle;
 
-
-        AddCollisionHandler(Player, PlayerDied);
-        //Player.Died += new Player.DiedEventHandler(PlayerDied);
+        //taxi collision handler hook
+        AddCollisionHandler(Player, PlayerDied); //TODO: maybe move to ConnectListeners?
 
         Add(Player, 3);
         ConnectListeners();
 
         AddRoad(Vector.Zero);
-        AddRoad(new Vector(0, 2000));
-        AddRoad(new Vector(0, -2000));
+        AddRoad(new Vector(0, 1950));
+        AddRoad(new Vector(0, -1950));
 
-        
+        //create Fuel gauge
         FuelGauge = new DoubleMeter(100);
         FuelGauge.MaxValue = 10;
         FuelGauge.LowerLimit += FuelEmpty;
-
         ProgressBar fuelBar = new ProgressBar(150, 20);
         fuelBar.X = Screen.Left + 150;
         fuelBar.Y = Screen.Top - 20;
         fuelBar.BarColor = Color.Yellow;
         fuelBar.BindTo(FuelGauge);
         Add(fuelBar);
-
+        //fuel icon next to gauge.  TODO: does it have to be gameobject? Aren't there UI elements??? investigate pls
         GameObject fuel = new GameObject(FuelCanTex);
         fuel.Position = new Vector(Screen.Left - 675, Screen.Top + 570);
         Add(fuel, 3);
 
+        // Add speed label and counter
+        //Label speedLabel = new Label();
+        //speedLabel.Text = "Speed:";
+        //speedLabel.TextColor = Color.White;
+        //speedLabel.X = Screen.Left + 80;
+        //speedLabel.Y = Screen.Top - 100;
+        //Add(speedLabel);
 
+        Speedometer = new IntMeter(0);
+        Label speedoMeter = new Label();
+        speedoMeter.Title = "Speed: ";
+        speedoMeter.X = Screen.Left + 90;
+        speedoMeter.Y = Screen.Top - 75;
+        speedoMeter.TextColor = Color.White;
+        speedoMeter.Color = Color.Transparent;
+        speedoMeter.HorizontalAlignment = HorizontalAlignment.Left;
+        speedoMeter.BindTo(Speedometer);
+        Add(speedoMeter);
+
+        //Add distance label and counter
+        //Label distLabel = new Label();
+        //distLabel.Text = "Distance:";
+        //distLabel.TextColor = Color.White;
+        //distLabel.X = Screen.Left + 67;
+        //distLabel.Y = Screen.Top - 150;
+        //Add(distLabel);
+        
+        DistanceCounter = new IntMeter(0);
+        Label distanceDisplay = new Label();
+        distanceDisplay.Title = "Distance: ";
+        distanceDisplay.X = Screen.Left + 101;
+        distanceDisplay.Y = Screen.Top - 95;
+        distanceDisplay.TextColor = Color.White;
+        distanceDisplay.Color = Color.Transparent;
+        distanceDisplay.HorizontalAlignment = HorizontalAlignment.Left;
+
+        distanceDisplay.BindTo(DistanceCounter);
+        Add(distanceDisplay);
     }
 }
 
