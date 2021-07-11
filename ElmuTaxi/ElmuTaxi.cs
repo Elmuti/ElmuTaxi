@@ -150,7 +150,22 @@ public class ElmuTaxi : PhysicsGame
                 return false;
         }
     }
-
+    //bool LaneCanSpawn(int lane, double time)
+    //{
+    //    switch (lane)
+    //    {
+    //        case 0:
+    //            return (LaneHasntSpawnedIn(1, time) || LaneHasntSpawnedIn(2, time) || LaneHasntSpawnedIn(3, time));
+    //        case 1:
+    //            return (LaneHasntSpawnedIn(0, time) || LaneHasntSpawnedIn(2, time) || LaneHasntSpawnedIn(3, time));
+    //        case 2:
+    //            return (LaneHasntSpawnedIn(0, time) || LaneHasntSpawnedIn(1, time) || LaneHasntSpawnedIn(3, time));
+    //        case 3:
+    //            return (LaneHasntSpawnedIn(0, time) || LaneHasntSpawnedIn(1, time) || LaneHasntSpawnedIn(2, time));
+    //        default:
+    //            return false;
+    //    }
+    //}
     /// <summary>
     /// Print lane CD for debugging Lane spawn rules
     /// </summary>
