@@ -312,25 +312,21 @@ public class ElmuTaxi : PhysicsGame
     /// </summary>
     /// <param name="a"></param>
     /// <param name="b"></param>
-    public void PlayerDied(PhysicsObject a, PhysicsObject b) //TODO:  Rename me?
+    public void PlayerCollision(PhysicsObject a, PhysicsObject b) //TODO:  Rename me?
     {
-        if (a == Player || b == Player)
+        bool isFuel = FuelCans.Contains(b);
+        bool isCar = Cars.Contains(b);
+
+        if (isCar)
         {
-            if (a == Player && FuelCans.Contains(b) || (b == Player && FuelCans.Contains(a)))
-            {
-                Debug.WriteLine("PICK UP FUEL!!!!!!!");
-                FuelGauge.Value = 100;
-
-                if (a == Player)
-                    b.IsUpdated = false;
-
-                if (b == Player)
-                    a.IsUpdated = false;
-
-                return;
-            }
             GameOver("Game over. You hit a car!");
             Debug.WriteLine("Car hit an npc car, GAME OVER!");
+        }
+        else if (isFuel && a == Player)
+        {
+            Debug.WriteLine("PICK UP FUEL!!!!!!!");
+            FuelGauge.Value = 100;
+            b.IsUpdated = false;
         }
     }
 
@@ -421,7 +417,7 @@ public class ElmuTaxi : PhysicsGame
         Player.Shape = Shape.Rectangle;
 
         //taxi collision handler hook
-        AddCollisionHandler(Player, PlayerDied); //TODO: maybe move to ConnectListeners?
+        AddCollisionHandler(Player, PlayerCollision); //TODO: maybe move to ConnectListeners?
 
         Add(Player, 3);
         ConnectListeners();
