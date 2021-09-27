@@ -1,6 +1,4 @@
 using Jypeli;
-using Jypeli.Assets;
-using Jypeli.Controls;
 using Jypeli.Widgets;
 using System;
 using System.Collections.Generic;
@@ -37,7 +35,6 @@ public class ElmuTaxi : PhysicsGame
 
     //Constants
     const double CAR_SPAWNRATE_MIN = 1.5;
-    const double CAR_SPAWNRATE_LIMIT = 0.1;
     const double CAR_SPAWNRATE_MAX = 2.4;
     const double FUEL_SPAWNRATE_MIN = 7.5;
     const double FUEL_SPAWNRATE_MAX = 16;
@@ -48,8 +45,9 @@ public class ElmuTaxi : PhysicsGame
     const double CAR_NPC_SPEED = 350;
     const double CAR_MAXSPEED_DEFAULT = 950.0;
 
-    Image RoadTexture = LoadImage("road");
-    Image FuelCanTex = LoadImage("jerrycan");
+    readonly Image RoadTexture = LoadImage("road");
+    readonly Image FuelCanTex = LoadImage("jerrycan");
+
     DoubleMeter FuelGauge;
     IntMeter DistanceCounter;
     IntMeter Speedometer;
@@ -61,7 +59,6 @@ public class ElmuTaxi : PhysicsGame
     double CurrentCarSpeed = 1;
     double CurrentCarMaxSpeed = 950.0;
 
-    double TotalCooldown = 1;
     List<double> LaneXPositions = new List<double>() {-340, -140, 60, 280};
     List<double> LaneXCooldown = new List<double>() { 8, 2, 8, 8 };
     List<double> LaneXPrevSpawn = new List<double>() { 0, 0, 0, 0 };
@@ -87,10 +84,8 @@ public class ElmuTaxi : PhysicsGame
         Debug.WriteLine("Spawning car on lane " + lane.ToString());
         //set lane on CD
         LaneXCooldown[lane] = Utils.Math.RandomDouble(CAR_SPAWNRATE_MIN, CAR_SPAWNRATE_MAX);
-        TotalCooldown = CAR_SPAWNRATE_LIMIT;
-        Random rnd = new Random();
         //choose texture
-        Image carTex = CarTextures[rnd.Next(0, CarTextures.Count - 1)];
+        Image carTex = CarTextures[RandomGen.NextInt(CarTextures.Count - 1)];
         PhysicsObject newCar = new PhysicsObject(carTex);
         //choose lane
         newCar.Position = new Vector(LaneXPositions[lane], 1300);
@@ -106,8 +101,6 @@ public class ElmuTaxi : PhysicsGame
     {
         //set lane on CD
         LaneXCooldown[lane] = Utils.Math.RandomDouble(CAR_SPAWNRATE_MIN, CAR_SPAWNRATE_MAX);
-        TotalCooldown = CAR_SPAWNRATE_LIMIT;
-        Random rnd = new Random();
         PhysicsObject fuelPickup = new PhysicsObject(FuelCanTex);
         fuelPickup.Tag = "Fuel";
         //choose lane
@@ -153,17 +146,16 @@ public class ElmuTaxi : PhysicsGame
     /// <summary>
     /// Print lane CD for debugging Lane spawn rules
     /// </summary>
-    void PrintLaneCD()
-    {
-        Debug.WriteLine("Lane X CD = (" + LaneXCooldown[0].ToString() + ", " + LaneXCooldown[1].ToString() + ", " + LaneXCooldown[2].ToString() + ", " + LaneXCooldown[3].ToString() + ")");
-    }
+    //void PrintLaneCD()
+    //{
+    //    Debug.WriteLine("Lane X CD = (" + LaneXCooldown[0].ToString() + ", " + LaneXCooldown[1].ToString() + ", " + LaneXCooldown[2].ToString() + ", " + LaneXCooldown[3].ToString() + ")");
+    //}
 
     protected override void Update(Time time)
     {
         base.Update(time);
         double total = time.SinceStartOfGame.TotalSeconds;
         double dt = time.SinceLastUpdate.TotalSeconds;
-        TotalCooldown--;
 
         Speedometer.Value = (int)(CurrentCarSpeed / 5.5);
         DistanceCounter.Value = (int)(DistanceTravelled / 5.5);
@@ -202,16 +194,15 @@ public class ElmuTaxi : PhysicsGame
         {
 
             List<int> ind = new List<int>() { 0, 1, 2, 3 };
-            Random rnd = new Random();
 
             for(int i = 0; i < 4; i++)
             {
-                var next = rnd.Next(0, ind.Count);
+                var next = RandomGen.NextInt(ind.Count);
                 var element = ind[next];
                 ind.RemoveAt(next);
 
                 double cd = LaneXCooldown[element];
-                //if (cd < 0 && TotalCooldown < 0 && LaneCanSpawn(lane, total)) //TODO: investigate if total CD is still necessary after introduction of LaneCanSpawn ?
+                //TODO: investigate if total CD is still necessary after introduction of LaneCanSpawn ?
                 if (cd <= 0 && LaneCanSpawn(element, total)) 
                     {
                     if (total > NextFuelDrop)
@@ -271,14 +262,7 @@ public class ElmuTaxi : PhysicsGame
         {
             if (GameRunning && fuel.Key != null && fuel.Value)
             {
-                try
-                {
-                    fuel.Key.Position -= new Vector(0.0, CurrentCarSpeed * dt);
-                }
-                catch(NullReferenceException e)
-                {
-
-                }
+                fuel.Key.Position -= new Vector(0.0, CurrentCarSpeed * dt);
             }
         }
 
@@ -340,9 +324,6 @@ public class ElmuTaxi : PhysicsGame
         bool isFuel = FuelCans.ContainsKey(b);
         bool isCar = Cars.Contains(b);
 
-        if (!a.IsUpdated || !b.IsUpdated)
-            return;
-
         if (isCar)
         {
             GameOver("Game over. You hit a car!");
@@ -368,9 +349,6 @@ public class ElmuTaxi : PhysicsGame
         GameOverDisplay.TextScale = new Vector(2, 2);
         GameOverDisplay.TextColor = Color.Red;
         Add(GameOverDisplay);
-        //Player.Animation = null;
-        //Player.Image = LoadImage("headstone");
-        //Player.Angle = Angle.Zero;
     }
 
     /// <summary>
@@ -438,7 +416,6 @@ public class ElmuTaxi : PhysicsGame
         Player.MakeStatic();
         Player.Position = Level.Center - new Vector(0, 750);
         Level.Size = new Vector(1400, 2000);
-        //Player.Image = LoadImage("taxi");
         Camera.ZoomToLevel();
         Player.Shape = Shape.Rectangle;
 
@@ -467,13 +444,6 @@ public class ElmuTaxi : PhysicsGame
         fuel.Position = new Vector(Screen.Left - 675, Screen.Top + 570);
         Add(fuel, 3);
 
-        // Add speed label and counter
-        //Label speedLabel = new Label();
-        //speedLabel.Text = "Speed:";
-        //speedLabel.TextColor = Color.White;
-        //speedLabel.X = Screen.Left + 80;
-        //speedLabel.Y = Screen.Top - 100;
-        //Add(speedLabel);
 
         Speedometer = new IntMeter(0);
         Label speedoMeter = new Label();
@@ -486,14 +456,6 @@ public class ElmuTaxi : PhysicsGame
         speedoMeter.BindTo(Speedometer);
         Add(speedoMeter);
 
-        //Add distance label and counter
-        //Label distLabel = new Label();
-        //distLabel.Text = "Distance:";
-        //distLabel.TextColor = Color.White;
-        //distLabel.X = Screen.Left + 67;
-        //distLabel.Y = Screen.Top - 150;
-        //Add(distLabel);
-        
         DistanceCounter = new IntMeter(0);
         Label distanceDisplay = new Label();
         distanceDisplay.Title = "Distance: ";
